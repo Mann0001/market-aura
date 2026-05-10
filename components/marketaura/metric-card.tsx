@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { useCurrency } from "@/components/currency-provider"
 import { TrendingUp, TrendingDown, type LucideIcon } from "lucide-react"
@@ -45,6 +45,13 @@ export function MetricCard({
   const { formatPrice } = useCurrency()
   const [displayValue, setDisplayValue] = useState(0)
   const isPositive = change >= 0
+  const sparklineSeed = useMemo(
+    () =>
+      title.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0) +
+      Math.round(value) +
+      Math.round(change * 100),
+    [title, value, change],
+  )
 
   useEffect(() => {
     const duration = 1500
@@ -64,22 +71,26 @@ export function MetricCard({
     return () => clearInterval(timer)
   }, [value])
 
-  // Generate mini sparkline data
-  const sparklinePoints = Array.from({ length: 24 }, (_, i) => {
-    const baseValue = 50 + (isPositive ? i * 0.5 : -i * 0.3)
-    return baseValue + Math.sin(i * 0.5) * 10 + Math.random() * 5
-  })
+  const pathD = useMemo(() => {
+    // Keep sparkline deterministic across server/client renders to avoid hydration mismatches.
+    const points = Array.from({ length: 24 }, (_, i) => {
+      const baseValue = 50 + (isPositive ? i * 0.5 : -i * 0.3)
+      const seededNoise = ((Math.sin((i + 1) * (sparklineSeed + 17)) + 1) / 2) * 5
+      return baseValue + Math.sin(i * 0.5) * 10 + seededNoise
+    })
 
-  const minY = Math.min(...sparklinePoints)
-  const maxY = Math.max(...sparklinePoints)
-  const normalizedPoints = sparklinePoints.map((p, i) => ({
-    x: (i / (sparklinePoints.length - 1)) * 100,
-    y: 100 - ((p - minY) / (maxY - minY)) * 100,
-  }))
+    const minY = Math.min(...points)
+    const maxY = Math.max(...points)
+    const range = maxY - minY || 1
 
-  const pathD = normalizedPoints
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
-    .join(" ")
+    return points
+      .map((p, i) => {
+        const x = (i / (points.length - 1)) * 100
+        const y = 100 - ((p - minY) / range) * 100
+        return `${i === 0 ? "M" : "L"} ${x} ${y}`
+      })
+      .join(" ")
+  }, [isPositive, sparklineSeed])
 
   return (
     <motion.div

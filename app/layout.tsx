@@ -35,8 +35,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-background" suppressHydrationWarning>
-      <body className="font-sans antialiased">
+    <html
+      lang="en"
+      className="bg-background [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      suppressHydrationWarning
+    >
+      <body className="font-sans antialiased [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
